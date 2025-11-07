@@ -22,6 +22,9 @@ jobs:
 
       - name: Apply migrations to Supabase
         env:
+          SUPABASE_DB_URL_BASE: ${{ secrets.SUPABASE_DB_URL_BASE }}
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          
         run: |
-          supabase db push --db-url "$SUPABASE_DB_URL" --include-all
+          supabase db push --db-url "$SUPABASE_DB_URL_BASE" --include-all -p "$SUPABASE_DB_PASSWORD"
