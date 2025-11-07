@@ -10,7 +10,6 @@ on:
 jobs:
   push:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,44 +20,29 @@ jobs:
       - name: Supabase CLI version
         run: supabase --version
 
-      # Build de URL IPv4 "best-effort" (não falha o job se não conseguir)
-      - name: Build IPv4 DSN (best-effort)
-        id: v4dsn
+      # Resolve o host do Supabase para IPv4 usando Python em ONE-LINERS (sem heredoc)
+      - name: Build IPv4 DSN (best-effort, não falha)
         shell: bash
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
+          set +e
           DBURL="$SUPABASE_DB_URL"
-          # Extrai o host da URI usando Python (sem libs extras)
-          HOST="$(python3 - "$DBURL" <<'PY'
-import sys, urllib.parse
-u = urllib.parse.urlsplit(sys.argv[1].replace('postgresql://','http://',1))
-print(u.hostname or '')
-PY
-)"
-          if [ -z "$HOST" ]; then
-            echo "Host não identificado; seguindo com a URL original."
-            exit 0
-          fi
-
-          # Resolve apenas IPv4 (gethostbyname retorna A record)
-          IPV4="$(python3 - "$HOST" <<'PY'
-import socket, sys
-try:
-    print(socket.gethostbyname(sys.argv[1]))
-except Exception:
-    print("")
-PY
-)"
+          # extrai o host da URI
+          HOST=$(DBURL="$DBURL" python3 -c "import os,urllib.parse; db=os.environ['DBURL']; u=urllib.parse.urlsplit(db.replace('postgresql://','http://',1)); print(u.hostname or '')")
+          # resolve somente A record (IPv4)
+          IPV4=$(HOST="$HOST" python3 -c "import os,socket; h=os.environ['HOST']; 
+print(socket.gethostbyname(h)) if h else print('')")
           if [ -n "$IPV4" ]; then
             DBURL_V4="${DBURL/$HOST/$IPV4}"
             echo "SUPABASE_DB_URL_V4=$DBURL_V4" >> "$GITHUB_ENV"
             echo "IPv4 resolvido: $IPV4"
           else
-            echo "Não foi possível resolver IPv4 via Python; seguiremos com a URL original."
+            echo "Sem IPv4 resolvido; seguiremos com a URL original."
           fi
+          set -e
 
-      # Aplica migrações priorizando IPv4 + DoH; cai para URL original se necessário
+      # Aplica migrações priorizando IPv4 + DoH; se não tiver, usa a URL original
       - name: Apply migrations to Supabase
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
