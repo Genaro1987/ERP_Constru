@@ -10,6 +10,7 @@ on:
 jobs:
   push:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,30 +21,48 @@ jobs:
       - name: Supabase CLI version
         run: supabase --version
 
-      # 1) Resolve o host do Supabase para IPv4 e gera uma URL v4
-      - name: Force IPv4 for Supabase host
+      # Build de URL IPv4 "best-effort" (não falha o job se não conseguir)
+      - name: Build IPv4 DSN (best-effort)
+        id: v4dsn
+        shell: bash
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        shell: bash
         run: |
-          set -euo pipefail
           DBURL="$SUPABASE_DB_URL"
-          HOST="$(echo "$DBURL" | awk -F@ '{print $2}' | awk -F'[:/?]' '{print $1}')"
-          IPV4="$(getent ahostsv4 "$HOST" | awk 'NR==1{print $1}')"
-          if [ -z "${IPV4:-}" ]; then
-            echo "IPv4 não resolvido via getent; tentando fallback com dig..."
-            IPV4="$(dig +short A "$HOST" | head -n1)"
+          # Extrai o host da URI usando Python (sem libs extras)
+          HOST="$(python3 - "$DBURL" <<'PY'
+import sys, urllib.parse
+u = urllib.parse.urlsplit(sys.argv[1].replace('postgresql://','http://',1))
+print(u.hostname or '')
+PY
+)"
+          if [ -z "$HOST" ]; then
+            echo "Host não identificado; seguindo com a URL original."
+            exit 0
           fi
-          if [ -z "${IPV4:-}" ]; then
-            echo "Falha ao resolver IPv4 para $HOST"; exit 1
-          fi
-          DBURL_V4="${DBURL//$HOST/$IPV4}"
-          echo "SUPABASE_DB_URL_V4=$DBURL_V4" >> "$GITHUB_ENV"
 
-      # 2) Aplica migrações usando IPv4 e resolver DNS via HTTPS (mais estável no runner)
-      - name: Apply migrations to Supabase (IPv4)
+          # Resolve apenas IPv4 (gethostbyname retorna A record)
+          IPV4="$(python3 - "$HOST" <<'PY'
+import socket, sys
+try:
+    print(socket.gethostbyname(sys.argv[1]))
+except Exception:
+    print("")
+PY
+)"
+          if [ -n "$IPV4" ]; then
+            DBURL_V4="${DBURL/$HOST/$IPV4}"
+            echo "SUPABASE_DB_URL_V4=$DBURL_V4" >> "$GITHUB_ENV"
+            echo "IPv4 resolvido: $IPV4"
+          else
+            echo "Não foi possível resolver IPv4 via Python; seguiremos com a URL original."
+          fi
+
+      # Aplica migrações priorizando IPv4 + DoH; cai para URL original se necessário
+      - name: Apply migrations to Supabase
         env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
           SUPABASE_DB_URL_V4: ${{ env.SUPABASE_DB_URL_V4 }}
         run: |
-          supabase db push --dns-resolver https --db-url "$SUPABASE_DB_URL_V4" --include-all || \
-          supabase db push --dns-resolver https --db-url "$SUPABASE_DB_URL" --include-all
+          URL="${SUPABASE_DB_URL_V4:-$SUPABASE_DB_URL}"
+          supabase db push --dns-resolver https --db-url "$URL" --include-all
