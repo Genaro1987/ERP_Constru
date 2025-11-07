@@ -17,8 +17,33 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
 
-      - name: Apply migrations to Supabase
+      - name: Supabase CLI version
+        run: supabase --version
+
+      # 1) Resolve o host do Supabase para IPv4 e gera uma URL v4
+      - name: Force IPv4 for Supabase host
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        shell: bash
         run: |
-          supabase db push --db-url "$SUPABASE_DB_URL"
+          set -euo pipefail
+          DBURL="$SUPABASE_DB_URL"
+          HOST="$(echo "$DBURL" | awk -F@ '{print $2}' | awk -F'[:/?]' '{print $1}')"
+          IPV4="$(getent ahostsv4 "$HOST" | awk 'NR==1{print $1}')"
+          if [ -z "${IPV4:-}" ]; then
+            echo "IPv4 não resolvido via getent; tentando fallback com dig..."
+            IPV4="$(dig +short A "$HOST" | head -n1)"
+          fi
+          if [ -z "${IPV4:-}" ]; then
+            echo "Falha ao resolver IPv4 para $HOST"; exit 1
+          fi
+          DBURL_V4="${DBURL//$HOST/$IPV4}"
+          echo "SUPABASE_DB_URL_V4=$DBURL_V4" >> "$GITHUB_ENV"
+
+      # 2) Aplica migrações usando IPv4 e resolver DNS via HTTPS (mais estável no runner)
+      - name: Apply migrations to Supabase (IPv4)
+        env:
+          SUPABASE_DB_URL_V4: ${{ env.SUPABASE_DB_URL_V4 }}
+        run: |
+          supabase db push --dns-resolver https --db-url "$SUPABASE_DB_URL_V4" --include-all || \
+          supabase db push --dns-resolver https --db-url "$SUPABASE_DB_URL" --include-all
