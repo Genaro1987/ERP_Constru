@@ -20,6 +20,11 @@ jobs:
       - name: Supabase CLI version
         run: supabase --version
 
+      - name: Sanity check DSN host
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: echo "$SUPABASE_DB_URL" | sed -E 's#^postgresql://[^@]*@([^:/?]+).*#Host=\1#'
+      
       - name: Apply migrations to Supabase
         env:
           SUPABASE_DB_URL_BASE: ${{ secrets.SUPABASE_DB_URL_BASE }}
