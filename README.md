@@ -56,7 +56,7 @@ Todos os endpoints estão em `src/app/api/<recurso>/route.ts` e seguem o padrão
 - `/api/recebimentos`
 - `/api/itens-recebimento`
 - `/api/contas-pagar`
-- `/api/health` (inclui verificação de conectividade com o Supabase)
+- `/api/health`
 
 ### Fluxos automatizados
 
@@ -87,7 +87,3 @@ supabase db push --file supabase/migrations/0001_schema.sql
 - Expor documentação via Swagger ou Redoc para facilitar consumo externo.
 - Complementar os endpoints com `PUT/PATCH/DELETE` para edição e inativação de cadastros.
 - Adicionar tratativas transacionais (RPC/Edge Functions) para garantir atomicidade completa nos fluxos mais complexos.
-
-## Histórico de versões
-
-- [2024-05-15](docs/versoes/2024-05-15.md)
