@@ -1,0 +1,23 @@
+name: Neon DB — Apply Migrations
+
+on:
+  workflow_dispatch:
+  push:
+    paths: ['db/migrations/**.sql', '.github/workflows/db.yml']
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Apply SQL migrations (in order)
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: |
+          set -e
+          for f in $(ls -1 db/migrations/*.sql | sort); do
+            echo ">> Applying $f"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
+          done
