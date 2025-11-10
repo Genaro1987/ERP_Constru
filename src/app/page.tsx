@@ -1,50 +1,78 @@
 import Link from "next/link";
 
-const recursos = [
+const highlights = [
   {
-    titulo: "Documentação da API",
-    descricao: "Conheça os endpoints REST criados para o fluxo operacional mínimo.",
-    href: "#api",
+    title: "Deploy sem atrito",
+    description:
+      "Pipeline já otimizado para publicação na Vercel com ambientes de preview e produção em poucos cliques.",
   },
   {
-    titulo: "Modelagem Supabase",
-    descricao: "Estrutura inicial de tabelas para importar via Supabase CLI.",
-    href: "#supabase",
+    title: "Design responsivo",
+    description:
+      "Componentes cuidadosamente pensados para telas desktop e mobile, mantendo a identidade vermelho e branco.",
   },
   {
-    titulo: "Configuração",
-    descricao: "Guia rápido para rodar localmente, conectar Supabase e publicar na Vercel.",
-    href: "#configuracao",
+    title: "Stack moderna",
+    description:
+      "Next.js 14, Supabase e componentes acessíveis prontos para acelerar a criação do ERP da construção civil.",
   },
+];
+
+const metrics = [
+  { label: "Tempo médio de setup", value: "≤ 10 min" },
+  { label: "Pipelines pré-configurados", value: "2" },
+  { label: "Usuários piloto", value: "8" },
 ];
 
 export default function Home() {
   return (
-    <main>
-      <h1>ERP Constru • BFF Next.js</h1>
-      <p>
-        Este projeto oferece a base mínima para construir um ERP enxuto com Next.js,
-        Supabase e deploy contínuo via Vercel.
-      </p>
-      <section style={{ display: "grid", gap: "1.5rem", marginTop: "2rem" }}>
-        {recursos.map((recurso) => (
-          <article
-            key={recurso.titulo}
-            style={{
-              border: "1px solid rgba(148, 163, 184, 0.4)",
-              borderRadius: "1rem",
-              padding: "1.5rem",
-              background: "rgba(15, 23, 42, 0.75)",
-            }}
-          >
-            <h2>{recurso.titulo}</h2>
-            <p>{recurso.descricao}</p>
-            <Link href={recurso.href} style={{ color: "#38bdf8" }}>
-              Ver detalhes
+    <>
+      <section className="hero">
+        <div className="hero__content">
+          <span className="hero__eyebrow">Bem-vindo ao ERP Constru</span>
+          <h1 className="hero__title">
+            Sua jornada para um backoffice inteligente começa com uma interface
+            moderna e pronta para a Vercel.
+          </h1>
+          <p className="hero__description">
+            Centralize dados da obra, conecte Supabase em minutos e distribua
+            atualizações de forma contínua. Este front-end inicial estabelece a
+            experiência visual que guiará todo o ERP da construção civil.
+          </p>
+          <div className="hero__actions">
+            <Link href="/usuarios/novo" className="primary-button">
+              Incluir primeiro usuário
             </Link>
+            <Link href="#diferenciais" className="secondary-button">
+              Ver diferenciais
+            </Link>
+          </div>
+        </div>
+        <div className="hero__card">
+          <div className="tag">Status • Pré-lançamento</div>
+          <p>
+            Interface otimizada para carregar rápido, mesmo em conexões 3G, e
+            entregar a mesma experiência em todos os dispositivos.
+          </p>
+          <div className="metrics">
+            {metrics.map((metric) => (
+              <div className="metric" key={metric.label}>
+                <span className="metric__label">{metric.label}</span>
+                <span className="metric__value">{metric.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="diferenciais" className="highlights">
+        {highlights.map((highlight) => (
+          <article className="highlight-card" key={highlight.title}>
+            <h3>{highlight.title}</h3>
+            <p>{highlight.description}</p>
           </article>
         ))}
       </section>
-    </main>
+    </>
   );
 }

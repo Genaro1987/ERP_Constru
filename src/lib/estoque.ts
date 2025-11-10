@@ -38,7 +38,7 @@ export async function registrarMovimento(payload: unknown) {
   );
 
   if (!saldo.ok) {
-    return saldo;
+    return { ok: false as const, mensagem: saldo.mensagem };
   }
 
   return { ok: true as const, movimento, saldo: saldo.saldo };
